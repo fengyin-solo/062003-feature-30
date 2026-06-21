@@ -10,6 +10,9 @@ import {
   calcProfit,
   calcTraineeScore,
   getRelationship,
+  getMilestoneProgress,
+  getRiskWarnings,
+  getNearFailureInfo,
 } from '../utils/gameLogic'
 import { saveToSlot } from '../utils/storage'
 
@@ -24,6 +27,15 @@ export function useGame() {
   )
   const activeTrainees = computed(() =>
     state.value ? state.value.trainees.filter((t) => t.status !== 'left') : []
+  )
+  const milestoneProgress = computed(() =>
+    state.value ? getMilestoneProgress(state.value) : null
+  )
+  const riskWarnings = computed(() =>
+    state.value ? getRiskWarnings(state.value) : []
+  )
+  const nearFailureInfo = computed(() =>
+    state.value ? getNearFailureInfo(state.value) : { isNear: false, reasons: [], suggestions: [] }
   )
 
   function startNewGame(slotIndex) {
@@ -119,6 +131,9 @@ export function useGame() {
     profit,
     daysLeft,
     activeTrainees,
+    milestoneProgress,
+    riskWarnings,
+    nearFailureInfo,
     startNewGame,
     loadGame,
     setSchedule,

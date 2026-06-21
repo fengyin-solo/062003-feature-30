@@ -194,6 +194,27 @@ export const GAME_CONFIG = {
     '方念慈', '宋时雨', '叶知秋', '周慕青', '赵星河',
   ],
 
+  // ── 阶段里程碑 ──
+  milestones: [
+    { day: 182, label: '半年', groups: 1, profit: 0, desc: '半年内至少出道 1 个组合' },
+    { day: 365, label: '一年', groups: 1, profit: 50000, desc: '一年内累计盈利达 ¥50,000' },
+    { day: 547, label: '一年半', groups: 2, profit: 150000, desc: '一年半内出道 2 个组合，盈利 ¥150,000' },
+    { day: 730, label: '两年', groups: 2, profit: 300000, desc: '两年内累计盈利达 ¥300,000' },
+    { day: 912, label: '两年半', groups: 3, profit: 500000, desc: '两年半内出道 3 个组合' },
+    { day: 1095, label: '三年终', groups: 3, profit: 800000, desc: '最终目标：3 组合 + 正盈利' },
+  ],
+
+  // ── 风险预警阈值 ──
+  warnings: {
+    moneyDanger: 10000,
+    moneyCritical: 5000,
+    daysWarningRatio: 0.2,
+    profitGapWarningDays: 90,
+    groupsGapWarningDays: 120,
+    traineeMin: 3,
+    dailyLossWarning: 2000,
+  },
+
   // ── 存档 ──
   storage: {
     savesKey: 'idol-agency-saves-v1',

@@ -18,6 +18,9 @@
     :can-end-day="canEndDay()"
     :rating-results="getRatingResults()"
     :calc-score="calcTraineeScore"
+    :milestone-progress="milestoneProgress"
+    :risk-warnings="riskWarnings"
+    :near-failure-info="nearFailureInfo"
     @back="backToMenu"
     @toggle-theme="toggleTheme"
     @set-schedule="setSchedule"
@@ -47,6 +50,9 @@ const {
   profit,
   daysLeft,
   activeTrainees,
+  milestoneProgress,
+  riskWarnings,
+  nearFailureInfo,
   startNewGame,
   loadGame,
   setSchedule,

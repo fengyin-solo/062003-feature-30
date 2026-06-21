@@ -555,3 +555,193 @@ export function getRatingResults(state) {
     }))
     .sort((a, b) => b.score - a.score)
 }
+
+export function getMilestoneProgress(state) {
+  const totalDays = CFG.victory.totalDays
+  const currentDay = state.day
+  const overallProgress = Math.min(1, currentDay / totalDays)
+
+  const milestones = CFG.milestones.map((m) => {
+    const reached = currentDay >= m.day
+    const current = !reached && (currentDay > (CFG.milestones[CFG.milestones.indexOf(m) - 1]?.day || 0))
+    const profit = calcProfit(state)
+    const groupsOk = state.groups.length >= m.groups
+    const profitOk = profit >= m.profit
+    const completed = reached && groupsOk && profitOk
+
+    let daysToMilestone = 0
+    if (!reached) {
+      daysToMilestone = m.day - currentDay
+    }
+
+    return {
+      ...m,
+      reached,
+      current,
+      completed,
+      groupsOk,
+      profitOk,
+      daysToMilestone,
+    }
+  })
+
+  const currentMilestone = milestones.find((m) => m.current) || milestones.find((m) => !m.reached) || milestones[milestones.length - 1]
+  const completedCount = milestones.filter((m) => m.completed).length
+
+  return {
+    overallProgress,
+    currentDay,
+    totalDays,
+    milestones,
+    currentMilestone,
+    completedCount,
+    totalMilestones: milestones.length,
+  }
+}
+
+export function getRiskWarnings(state) {
+  const warnings = []
+  const W = CFG.warnings
+  const profit = calcProfit(state)
+  const daysLeft = CFG.victory.totalDays - state.day
+  const activeTrainees = getActiveTrainees(state)
+  const traineeCount = activeTrainees.length
+
+  if (state.money < W.moneyCritical) {
+    warnings.push({
+      level: 'critical',
+      type: 'money',
+      icon: '💸',
+      title: '资金告急！',
+      message: `剩余资金仅 ¥${state.money.toLocaleString()}，濒临破产边缘（破产线 -¥20,000）`,
+    })
+  } else if (state.money < W.moneyDanger) {
+    warnings.push({
+      level: 'warning',
+      type: 'money',
+      icon: '💰',
+      title: '资金紧张',
+      message: `剩余资金 ¥${state.money.toLocaleString()}，请控制开支或尽快创收`,
+    })
+  }
+
+  const dailyCost =
+    CFG.dailyCosts.baseOperatingCost +
+    activeTrainees.filter((t) => t.status === 'trainee').length * CFG.dailyCosts.perTraineeCost +
+    activeTrainees.filter((t) => t.status === 'debuted').length * CFG.dailyCosts.perDebutedCost +
+    state.groups.length * CFG.dailyCosts.perGroupCost
+
+  if (dailyCost > W.dailyLossWarning && state.money < W.moneyDanger * 2) {
+    warnings.push({
+      level: 'warning',
+      type: 'burnrate',
+      icon: '🔥',
+      title: '日耗过高',
+      message: `每日运营成本约 ¥${dailyCost.toLocaleString()}，当前资金仅够维持 ${Math.max(0, Math.floor(state.money / dailyCost))} 天`,
+    })
+  }
+
+  if (daysLeft <= CFG.victory.totalDays * W.daysWarningRatio && daysLeft > 0) {
+    warnings.push({
+      level: 'warning',
+      type: 'time',
+      icon: '⏰',
+      title: '时间紧迫',
+      message: `仅剩 ${daysLeft} 天，请抓紧完成目标`,
+    })
+  }
+
+  const targetGroups = CFG.victory.targetGroups
+  const groupsNeeded = targetGroups - state.groups.length
+  if (groupsNeeded > 0 && daysLeft <= W.groupsGapWarningDays) {
+    const traineesReady = getRatingResults(state).filter((t) => t.canDebut).length
+    warnings.push({
+      level: groupsNeeded >= 2 && daysLeft <= 60 ? 'critical' : 'warning',
+      type: 'groups',
+      icon: '🎯',
+      title: '出道进度落后',
+      message: `还需出道 ${groupsNeeded} 个组合，目前达标练习生 ${traineesReady} 人，剩余 ${daysLeft} 天`,
+    })
+  }
+
+  if (CFG.victory.requirePositiveProfit && profit <= 0) {
+    if (daysLeft <= W.profitGapWarningDays) {
+      warnings.push({
+        level: 'critical',
+        type: 'profit',
+        icon: '📉',
+        title: '盈利目标危急',
+        message: `当前累计亏损 ¥${Math.abs(profit).toLocaleString()}，仅剩 ${daysLeft} 天扭转局面`,
+      })
+    } else {
+      warnings.push({
+        level: 'warning',
+        type: 'profit',
+        icon: '📊',
+        title: '尚未盈利',
+        message: `当前累计亏损 ¥${Math.abs(profit).toLocaleString()}，需尽快实现正盈利`,
+      })
+    }
+  }
+
+  if (traineeCount < W.traineeMin) {
+    warnings.push({
+      level: traineeCount <= 1 ? 'critical' : 'warning',
+      type: 'trainees',
+      icon: '👥',
+      title: '人手不足',
+      message: `可用练习生仅 ${traineeCount} 人，难以完成出道目标`,
+    })
+  }
+
+  if (state.money < -10000) {
+    warnings.push({
+      level: 'critical',
+      type: 'bankruptcy',
+      icon: '🚨',
+      title: '濒临破产',
+      message: `已负债 ¥${Math.abs(state.money).toLocaleString()}，若资金低于 -¥20,000 将直接破产！`,
+    })
+  }
+
+  return warnings.sort((a, b) => {
+    const levelOrder = { critical: 0, warning: 1 }
+    return levelOrder[a.level] - levelOrder[b.level]
+  })
+}
+
+export function getNearFailureInfo(state) {
+  const daysLeft = CFG.victory.totalDays - state.day
+  const profit = calcProfit(state)
+  const groupsNeeded = CFG.victory.targetGroups - state.groups.length
+  const info = { isNear: false, reasons: [], suggestions: [] }
+
+  if (daysLeft <= 30 && daysLeft > 0) {
+    info.isNear = true
+    info.reasons.push(`距离结束仅剩 ${daysLeft} 天`)
+    if (groupsNeeded > 0) {
+      info.reasons.push(`还差 ${groupsNeeded} 个出道组合`)
+      info.suggestions.push('优先安排高分练习生训练，冲刺出道评级')
+    }
+    if (CFG.victory.requirePositiveProfit && profit <= 0) {
+      info.reasons.push(`累计亏损 ¥${Math.abs(profit).toLocaleString()}`)
+      info.suggestions.push('让已出道组合尽快发单曲创收')
+    }
+  }
+
+  if (state.money < 0 && state.money > -20000) {
+    info.isNear = true
+    const distToBankrupt = 20000 + state.money
+    info.reasons.push(`资金已为负，距破产线（-¥20,000）仅剩 ¥${distToBankrupt.toLocaleString()}`)
+    info.suggestions.push('大幅削减开支，暂停公关活动，让出道组发单曲回血')
+  }
+
+  const activeTrainees = getActiveTrainees(state)
+  if (activeTrainees.length <= 1 && state.groups.length < CFG.victory.targetGroups) {
+    info.isNear = true
+    info.reasons.push(`可用练习生仅 ${activeTrainees.length} 人，难以凑齐出道组合`)
+    info.suggestions.push('保护现有练习生，避免过度训练导致流失')
+  }
+
+  return info
+}

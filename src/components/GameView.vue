@@ -5,6 +5,7 @@
       :days-left="daysLeft"
       :profit="profit"
       :theme="theme"
+      :milestone-progress="milestoneProgress"
       @back="$emit('back')"
       @toggle-theme="$emit('toggle-theme')"
     />
@@ -22,6 +23,10 @@
       </aside>
 
       <main class="main-panel">
+        <RiskWarning
+          :warnings="riskWarnings"
+          :near-failure="nearFailureInfo"
+        />
         <SchedulePanel
           :trainees="activeTrainees"
           :schedule="state.schedule"
@@ -91,6 +96,7 @@ import RatingModal from './RatingModal.vue'
 import DebutModal from './DebutModal.vue'
 import EventModal from './EventModal.vue'
 import GameOverModal from './GameOverModal.vue'
+import RiskWarning from './RiskWarning.vue'
 
 const props = defineProps({
   state: Object,
@@ -101,6 +107,9 @@ const props = defineProps({
   canEndDay: Boolean,
   ratingResults: Array,
   calcScore: Function,
+  milestoneProgress: Object,
+  riskWarnings: Array,
+  nearFailureInfo: Object,
 })
 
 const emit = defineEmits([
